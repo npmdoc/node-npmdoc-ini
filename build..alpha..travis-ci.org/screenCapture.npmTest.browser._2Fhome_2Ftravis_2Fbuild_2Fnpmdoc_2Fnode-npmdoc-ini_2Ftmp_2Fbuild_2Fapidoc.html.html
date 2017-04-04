@@ -1,0 +1,529 @@
+<html><head></head><body><div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a href="https://github.com/isaacs/ini#readme">ini (v1.3.4)</a>
+</h1>
+<h4>An ini encoder/decoder for node</h4>
+<div class="apidocSectionDiv"><a href="#apidoc.tableOfContents" id="apidoc.tableOfContents"><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.ini">module ini</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ini.decode">
+            function <span class="apidocSignatureSpan">ini.</span>decode
+            <span class="apidocSignatureSpan">(str)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ini.encode">
+            function <span class="apidocSignatureSpan">ini.</span>encode
+            <span class="apidocSignatureSpan">(obj, opt)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ini.parse">
+            function <span class="apidocSignatureSpan">ini.</span>parse
+            <span class="apidocSignatureSpan">(str)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ini.safe">
+            function <span class="apidocSignatureSpan">ini.</span>safe
+            <span class="apidocSignatureSpan">(val)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ini.stringify">
+            function <span class="apidocSignatureSpan">ini.</span>stringify
+            <span class="apidocSignatureSpan">(obj, opt)</span>
+            </a>
+
+        </li>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.ini.unsafe">
+            function <span class="apidocSignatureSpan">ini.</span>unsafe
+            <span class="apidocSignatureSpan">(val, doUnesc)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.ini" id="apidoc.module.ini">module ini</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.ini.decode" id="apidoc.element.ini.decode">
+        function <span class="apidocSignatureSpan">ini.</span>decode
+        <span class="apidocSignatureSpan">(str)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function decode(str) {
+  var out = {}
+    , p = out
+    , section = null
+    , state = "START"
+           // section     |key = value
+    , re = /^\[([^\]]*)\]$|^([^=]+)(=(.*))?$/i
+    , lines = str.split(/[\r\n]+/g)
+    , section = null
+
+  lines.forEach(function (line, _, __) {
+    if (!line || line.match(/^\s*[;#]/)) return
+    var match = line.match(re)
+    if (!match) return
+    if (match[1] !== undefined) {
+      section = unsafe(match[1])
+      p = out[section] = out[section] || {}
+      return
+    }
+    var key = unsafe(match[2])
+      , value = match[3] ? unsafe((match[4] || "")) : true
+    switch (value) {
+      case 'true':
+      case 'false':
+      case 'null': value = JSON.parse(value)
+    }
+
+    // Convert keys with '[]' suffix to an array
+    if (key.length &gt; 2 &amp;&amp; key.slice(-2) === "[]") {
+        key = key.substring(0, key.length - 2)
+        if (!p[key]) {
+          p[key] = []
+        }
+        else if (!Array.isArray(p[key])) {
+          p[key] = [p[key]]
+        }
+    }
+
+    // safeguard against resetting a previously defined
+    // array by accidentally forgetting the brackets
+    if (Array.isArray(p[key])) {
+      p[key].push(value)
+    }
+    else {
+      p[key] = value
+    }
+  })
+
+  // {a:{y:1},"a.b":{x:2}} --&gt; {a:{y:1,b:{x:2}}}
+  // use a filter to return the keys that have to be deleted.
+  Object.keys(out).filter(function (k, _, __) {
+    if (!out[k] || typeof out[k] !== "object" || Array.isArray(out[k])) return false
+    // see if the parent section is also an object.
+    // if so, add it to that, and mark this one for deletion
+    var parts = dotSplit(k)
+      , p = out
+      , l = parts.pop()
+      , nl = l.replace(/\\\./g, '.')
+    parts.forEach(function (part, _, __) {
+      if (!p[part] || typeof p[part] !== "object") p[part] = {}
+      p = p[part]
+    })
+    if (p === out &amp;&amp; nl === l) return false
+    p[nl] = out[k]
+    return true
+  }).forEach(function (del, _, __) {
+    delete out[del]
+  })
+
+  return out
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.ini.encode" id="apidoc.element.ini.encode">
+        function <span class="apidocSignatureSpan">ini.</span>encode
+        <span class="apidocSignatureSpan">(obj, opt)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function encode(obj, opt) {
+  var children = []
+    , out = ""
+
+  if (typeof opt === "string") {
+    opt = {
+      section: opt,
+      whitespace: false
+    }
+  } else {
+    opt = opt || {}
+    opt.whitespace = opt.whitespace === true
+  }
+
+  var separator = opt.whitespace ? " = " : "="
+
+  Object.keys(obj).forEach(function (k, _, __) {
+    var val = obj[k]
+    if (val &amp;&amp; Array.isArray(val)) {
+        val.forEach(function(item) {
+            out += safe(k + "[]") + separator + safe(item) + "\n"
+        })
+    }
+    else if (val &amp;&amp; typeof val === "object") {
+      children.push(k)
+    } else {
+      out += safe(k) + separator + safe(val) + eol
+    }
+  })
+
+  if (opt.section &amp;&amp; out.length) {
+    out = "[" + safe(opt.section) + "]" + eol + out
+  }
+
+  children.forEach(function (k, _, __) {
+    var nk = dotSplit(k).join('\\.')
+    var section = (opt.section ? opt.section + "." : "") + nk
+    var child = encode(obj[k], {
+      section: section,
+      whitespace: opt.whitespace
+    })
+    if (out.length &amp;&amp; child.length) {
+      out += eol
+    }
+    out += child
+  })
+
+  return out
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.ini.parse" id="apidoc.element.ini.parse">
+        function <span class="apidocSignatureSpan">ini.</span>parse
+        <span class="apidocSignatureSpan">(str)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function decode(str) {
+  var out = {}
+    , p = out
+    , section = null
+    , state = "START"
+           // section     |key = value
+    , re = /^\[([^\]]*)\]$|^([^=]+)(=(.*))?$/i
+    , lines = str.split(/[\r\n]+/g)
+    , section = null
+
+  lines.forEach(function (line, _, __) {
+    if (!line || line.match(/^\s*[;#]/)) return
+    var match = line.match(re)
+    if (!match) return
+    if (match[1] !== undefined) {
+      section = unsafe(match[1])
+      p = out[section] = out[section] || {}
+      return
+    }
+    var key = unsafe(match[2])
+      , value = match[3] ? unsafe((match[4] || "")) : true
+    switch (value) {
+      case 'true':
+      case 'false':
+      case 'null': value = JSON.parse(value)
+    }
+
+    // Convert keys with '[]' suffix to an array
+    if (key.length &gt; 2 &amp;&amp; key.slice(-2) === "[]") {
+        key = key.substring(0, key.length - 2)
+        if (!p[key]) {
+          p[key] = []
+        }
+        else if (!Array.isArray(p[key])) {
+          p[key] = [p[key]]
+        }
+    }
+
+    // safeguard against resetting a previously defined
+    // array by accidentally forgetting the brackets
+    if (Array.isArray(p[key])) {
+      p[key].push(value)
+    }
+    else {
+      p[key] = value
+    }
+  })
+
+  // {a:{y:1},"a.b":{x:2}} --&gt; {a:{y:1,b:{x:2}}}
+  // use a filter to return the keys that have to be deleted.
+  Object.keys(out).filter(function (k, _, __) {
+    if (!out[k] || typeof out[k] !== "object" || Array.isArray(out[k])) return false
+    // see if the parent section is also an object.
+    // if so, add it to that, and mark this one for deletion
+    var parts = dotSplit(k)
+      , p = out
+      , l = parts.pop()
+      , nl = l.replace(/\\\./g, '.')
+    parts.forEach(function (part, _, __) {
+      if (!p[part] || typeof p[part] !== "object") p[part] = {}
+      p = p[part]
+    })
+    if (p === out &amp;&amp; nl === l) return false
+    p[nl] = out[k]
+    return true
+  }).forEach(function (del, _, __) {
+    delete out[del]
+  })
+
+  return out
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+array[] = third value
+
+You can read, manipulate and write the ini-file like so:
+
+var fs = require('fs')
+  , ini = require('ini')
+
+var config = ini.<span class="apidocCodeKeywordSpan">parse</span>(fs.readFileSync('./config.ini', 'utf-8'))
+
+config.scope = 'local'
+config.database.database = 'use_another_database'
+config.paths.default.tmpdir = '/tmp'
+delete config.paths.default.datadir
+config.paths.default.array.push('fourth value')
+...</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.ini.safe" id="apidoc.element.ini.safe">
+        function <span class="apidocSignatureSpan">ini.</span>safe
+        <span class="apidocSignatureSpan">(val)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function safe(val) {
+  return ( typeof val !== "string"
+         || val.match(/[=\r\n]/)
+         || val.match(/^\[/)
+         || (val.length &gt; 1
+             &amp;&amp; isQuoted(val))
+         || val !== val.trim() )
+         ? JSON.stringify(val)
+         : val.replace(/;/g, '\\;').replace(/#/g, "\\#")
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+Alias for `encode(object, [options])`
+
+### safe(val)
+
+Escapes the string `val` such that it is safe to be used as a key or
+value in an ini-file. Basically escapes quotes. For example
+
+    ini.<span class="apidocCodeKeywordSpan">safe</span>('"unsafe string"')
+
+would result in
+
+    "\"unsafe string\""
+
+### unsafe(val)
+...</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.ini.stringify" id="apidoc.element.ini.stringify">
+        function <span class="apidocSignatureSpan">ini.</span>stringify
+        <span class="apidocSignatureSpan">(obj, opt)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function encode(obj, opt) {
+  var children = []
+    , out = ""
+
+  if (typeof opt === "string") {
+    opt = {
+      section: opt,
+      whitespace: false
+    }
+  } else {
+    opt = opt || {}
+    opt.whitespace = opt.whitespace === true
+  }
+
+  var separator = opt.whitespace ? " = " : "="
+
+  Object.keys(obj).forEach(function (k, _, __) {
+    var val = obj[k]
+    if (val &amp;&amp; Array.isArray(val)) {
+        val.forEach(function(item) {
+            out += safe(k + "[]") + separator + safe(item) + "\n"
+        })
+    }
+    else if (val &amp;&amp; typeof val === "object") {
+      children.push(k)
+    } else {
+      out += safe(k) + separator + safe(val) + eol
+    }
+  })
+
+  if (opt.section &amp;&amp; out.length) {
+    out = "[" + safe(opt.section) + "]" + eol + out
+  }
+
+  children.forEach(function (k, _, __) {
+    var nk = dotSplit(k).join('\\.')
+    var section = (opt.section ? opt.section + "." : "") + nk
+    var child = encode(obj[k], {
+      section: section,
+      whitespace: opt.whitespace
+    })
+    if (out.length &amp;&amp; child.length) {
+      out += eol
+    }
+    out += child
+  })
+
+  return out
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+
+config.scope = 'local'
+config.database.database = 'use_another_database'
+config.paths.default.tmpdir = '/tmp'
+delete config.paths.default.datadir
+config.paths.default.array.push('fourth value')
+
+fs.writeFileSync('./config_modified.ini', ini.<span class="apidocCodeKeywordSpan">stringify</span>(config, { section: &amp;#
+x27;section' }))
+
+This will result in a file called `config_modified.ini` being written
+to the filesystem with the following content:
+
+[section]
+scope=local
+[section.database]
+...</pre></li>
+    </ul>
+
+
+
+    <h2>
+        <a href="#apidoc.element.ini.unsafe" id="apidoc.element.ini.unsafe">
+        function <span class="apidocSignatureSpan">ini.</span>unsafe
+        <span class="apidocSignatureSpan">(val, doUnesc)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function unsafe(val, doUnesc) {
+  val = (val || "").trim()
+  if (isQuoted(val)) {
+    // remove the single quotes before calling JSON.parse
+    if (val.charAt(0) === "'") {
+      val = val.substr(1, val.length - 2);
+    }
+    try { val = JSON.parse(val) } catch (_) {}
+  } else {
+    // walk the val to find the first not-escaped ; character
+    var esc = false
+    var unesc = "";
+    for (var i = 0, l = val.length; i &lt; l; i++) {
+      var c = val.charAt(i)
+      if (esc) {
+        if ("\\;#".indexOf(c) !== -1)
+          unesc += c
+        else
+          unesc += "\\" + c
+        esc = false
+      } else if (";#".indexOf(c) !== -1) {
+        break
+      } else if (c === "\\") {
+        esc = true
+      } else {
+        unesc += c
+      }
+    }
+    if (esc)
+      unesc += "\\"
+    return unesc
+  }
+  return val
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
+</body></html>

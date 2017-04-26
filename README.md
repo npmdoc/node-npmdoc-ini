@@ -1,6 +1,6 @@
 # npmdoc-ini
 
-#### api documentation for  [ini (v1.3.4)](https://github.com/isaacs/ini#readme)  [![npm package](https://img.shields.io/npm/v/npmdoc-ini.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-ini) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-ini.svg)](https://travis-ci.org/npmdoc/node-npmdoc-ini)
+#### basic api documentation for  [ini (v1.3.4)](https://github.com/isaacs/ini#readme)  [![npm package](https://img.shields.io/npm/v/npmdoc-ini.svg?style=flat-square)](https://www.npmjs.org/package/npmdoc-ini) [![travis-ci.org build-status](https://api.travis-ci.org/npmdoc/node-npmdoc-ini.svg)](https://travis-ci.org/npmdoc/node-npmdoc-ini)
 
 #### An ini encoder/decoder for node
 
@@ -62,7 +62,8 @@
     "scripts": {
         "test": "tap test/*.js"
     },
-    "version": "1.3.4"
+    "version": "1.3.4",
+    "bin": {}
 }
 ```
 
